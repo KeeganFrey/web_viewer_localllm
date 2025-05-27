@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Step-by-Step Predictions</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
+        h1, h2 { color: #333; }
+        .predictions-container {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .prediction-step {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .prediction-step h3 {
+            margin-top: 0;
+            color: #555;
+            font-size: 1.1em;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        .prediction-step ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .prediction-step li {
+            padding: 8px;
+            border-bottom: 1px dashed #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .prediction-step li:last-child {
+            border-bottom: none;
+        }
+        .token {
+            font-weight: bold;
+            color: #007bff; /* Blue for token */
+            background-color: #e7f3ff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            white-space: pre; /* To show leading/trailing spaces in tokens */
+        }
+        .probability {
+            color: #28a745; /* Green for probability */
+            font-size: 0.9em;
+        }
+        .no-predictions {
+            color: #777;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <h1>LLM Generated Token Predictions</h1>
+
+    <!-- Assume you still have your prompt input and generate button from previous example -->
+    <!-- For this example, we'll focus on displaying the structured prediction data -->
+
+    <div class="predictions-container">
+        <h2>Step-by-Step Token Choices:</h2>
+        <div id="step_by_step_predictions_display">
+            <!-- Dynamic content will go here -->
+            <p class="no-predictions">No predictions to display yet. Generate some text.</p>
+        </div>
+    </div>
+
+    <script>
+        // Your example data from the backend
+        const exampleBackendResponseData = [
+            [{'token': ' Okay', 'probability': 0.10048562288284302}, {'token': ' Well', 'probability': 0.08133088797330856}, {'token': ' The', 'probability': 0.06108773127198219}],
+            [{'token': ',', 'probability': 0.9947760105133057}, {'token': '.', 'probability': 0.0018499352736398578}, {'token': '!', 'probability': 0.0005715189618058503}],
+            [{'token': ' let', 'probability': 0.3669314384460449}, {'token': ' the', 'probability': 0.22158773243427277}, {'token': ' so', 'probability': 0.17981894314289093}],
+            [{'token': "'s", 'probability': 0.9274246692657471}, {'token': ' me', 'probability': 0.06934251636266708}, {'token': '’s', 'probability': 0.0021049666684120893}],
+            [{'token': ' see', 'probability': 0.5538639426231384}, {'token': ' start', 'probability': 0.14085173606872559}, {'token': ' think', 'probability': 0.1283389776945114}],
+            [{'token': '.', 'probability': 0.9432756900787354}, {'token': '...', 'probability': 0.03550990670919418}, {'token': ',', 'probability': 0.013309715315699577}],
+            [{'token': ' The', 'probability': 0.537104606628418}, {'token': ' You', 'probability': 0.16976183652877808}, {'token': ' If', 'probability': 0.05571988224983215}],
+            [{'token': ' user', 'probability': 0.9773998856544495}, {'token': ' question', 'probability': 0.010327702388167381}, {'token': ' main', 'probability': 0.004164237063378096}],
+            [{'token': ' is', 'probability': 0.5500152111053467}, {'token': ' wants', 'probability': 0.36113694310188293}, {'token': ' asked', 'probability': 0.05660829693078995}],
+            [{'token': ' asking', 'probability': 0.9851418733596802}, {'token': ' looking', 'probability': 0.00947086326777935}, {'token': ' interested', 'probability': 0.003396869171410799}],
+            [{'token': ' about', 'probability': 0.5722599625587463}, {'token': ' for', 'probability': 0.32976648211479187}, {'token': ' what', 'probability': 0.08914244174957275}],
+            [{'token': ' meals', 'probability': 0.9497393369674683}, {'token': ' meal', 'probability': 0.024868542328476906}, {'token': ' recipes', 'probability': 0.013567421585321426}],
+            [{'token': ' that', 'probability': 0.46441391110420227}, {'token': ' made', 'probability': 0.3512091636657715}, {'token': ' using', 'probability': 0.11891176551580429}],
+            [{'token': ' can', 'probability': 0.9449268579483032}, {'token': ' use', 'probability': 0.04094475880265236}, {'token': ' primarily', 'probability': 0.007535186130553484}],
+            [{'token': ' be', 'probability': 0.9959404468536377}, {'token': ' use', 'probability': 0.0026462143287062645}, {'token': ' include', 'probability': 0.0010486317332834005}],
+            [{'token': ' made', 'probability': 0.9963496923446655}, {'token': ' prepared', 'probability': 0.0024694683961570263}, {'token': ' created', 'probability': 0.000903627835214138}],
+            [{'token': ' with', 'probability': 0.821644127368927}, {'token': ' primarily', 'probability': 0.08458712697029114}, {'token': ' using', 'probability': 0.08171223849058151}],
+            [{'token': ' primarily', 'probability': 0.6441940665245056}, {'token': ' flour', 'probability': 0.20166225731372833}, {'token': ' mainly', 'probability': 0.11008884012699127}],
+            [{'token': ' flour', 'probability': 0.9989215135574341}, {'token': ' fl', 'probability': 0.00048779480857774615}, {'token': ' wheat', 'probability': 0.0001848210667958483}],
+            [{'token': ' and', 'probability': 0.999479353427887}, {'token': ' (', 'probability': 0.0003380949201527983}, {'token': ',', 'probability': 0.00012459447316359729}]
+        ];
+
+        function displayStepByStepPredictions(predictionsArray) {
+            const container = document.getElementById('step_by_step_predictions_display');
+            container.innerHTML = ''; // Clear previous content
+
+            if (!predictionsArray || predictionsArray.length === 0) {
+                container.innerHTML = '<p class="no-predictions">No step-by-step predictions available.</p>';
+                return;
+            }
+
+            predictionsArray.forEach((stepPredictions, index) => {
+                // Create a div for each step
+                const stepDiv = document.createElement('div');
+                stepDiv.classList.add('prediction-step');
+
+                // Add a heading for the step
+                const stepHeading = document.createElement('h3');
+                stepHeading.textContent = `Predictions for Generated Token ${index + 1}:`;
+                stepDiv.appendChild(stepHeading);
+
+                // Create a list for the tokens in this step
+                const tokenList = document.createElement('ul');
+
+                if (stepPredictions && stepPredictions.length > 0) {
+                    stepPredictions.forEach(prediction => {
+                        const listItem = document.createElement('li');
+
+                        const tokenSpan = document.createElement('span');
+                        tokenSpan.classList.add('token');
+                        tokenSpan.textContent = `"${prediction.token}"`; // Show quotes to make spaces clear
+
+                        const probSpan = document.createElement('span');
+                        probSpan.classList.add('probability');
+                        probSpan.textContent = `Prob: ${(prediction.probability * 100).toFixed(2)}%`;
+
+                        listItem.appendChild(tokenSpan);
+                        listItem.appendChild(probSpan);
+                        tokenList.appendChild(listItem);
+                    });
+                } else {
+                    const noTokensItem = document.createElement('li');
+                    noTokensItem.textContent = 'No specific alternatives provided for this step.';
+                    noTokensItem.classList.add('no-predictions');
+                    tokenList.appendChild(noTokensItem);
+                }
+
+                stepDiv.appendChild(tokenList);
+                container.appendChild(stepDiv);
+            });
+        }
+
+        // --- How you would use this ---
+        // Assume your fetch call looks something like this:
+        /*
+        async function generateAndShowPredictions() {
+            // ... (your existing code to get prompt, max_tokens etc.)
+
+            const response = await fetch('/api/predict_with_steps', { // Your new backend endpoint
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: currentPrompt,
+                    max_new_tokens: maxTokens,
+                    num_top_logprobs_per_step: 3 // Or however many you want
+                }),
+            });
+
+            if (!response.ok) {
+                // Handle error
+                console.error("Failed to fetch predictions");
+                displayStepByStepPredictions([]); // Clear or show error
+                return;
+            }
+
+            const data = await response.json();
+            // Assuming data.generated_text is the final text
+            // and data.step_predictions is the array we're interested in
+
+            // document.getElementById('generated_output_text').textContent = data.generated_text;
+            displayStepByStepPredictions(data.step_predictions); // <--- This is the key call
+        }
+
+        // Add event listener to your generate button to call generateAndShowPredictions
+        // document.getElementById('generate_button').addEventListener('click', generateAndShowPredictions);
+        */
+
+        // For demonstration purposes, let's call it with the example data on page load
+        // In a real app, you'd call this after a successful fetch from your backend.
+        displayStepByStepPredictions(exampleBackendResponseData);
+
+    </script>
+</body>
+</html>

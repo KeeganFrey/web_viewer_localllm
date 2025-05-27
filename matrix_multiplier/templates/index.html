@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matrix Multiplier</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; padding-top: 20px; }
+        .container { display: flex; gap: 30px; align-items: flex-start; }
+        .matrix-input, .matrix-result { border: 1px solid #ccc; padding: 15px; border-radius: 5px; }
+        .matrix-input h3, .matrix-result h3 { margin-top: 0; }
+        .matrix-grid { display: grid; grid-template-columns: repeat(3, 50px); gap: 5px; margin-bottom: 15px; }
+        .matrix-grid input, .matrix-grid span { width: 45px; text-align: center; padding: 5px; border: 1px solid #ddd; }
+        .matrix-grid span { background-color: #eee; min-height: 25px; display: inline-block; line-height: 25px; }
+        button { padding: 10px 15px; cursor: pointer; }
+        .error { color: red; margin-top: 10px; font-weight: bold; }
+        .operator { font-size: 2em; align-self: center; margin: 0 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Matrix A Input -->
+        <div class="matrix-input">
+            <h3>Matrix A</h3>
+            <div class="matrix-grid" id="matrix-a-grid">
+                <input type="number" id="a00" value="1"> <input type="number" id="a01" value="2"> <input type="number" id="a02" value="3">
+                <input type="number" id="a10" value="4"> <input type="number" id="a11" value="5"> <input type="number" id="a12" value="6">
+                <input type="number" id="a20" value="7"> <input type="number" id="a21" value="8"> <input type="number" id="a22" value="9">
+            </div>
+        </div>
+
+        <div class="operator">×</div>
+
+        <!-- Matrix B Input -->
+        <div class="matrix-input">
+            <h3>Matrix B</h3>
+            <div class="matrix-grid" id="matrix-b-grid">
+                <input type="number" id="b00" value="9"> <input type="number" id="b01" value="8"> <input type="number" id="b02" value="7">
+                <input type="number" id="b10" value="6"> <input type="number" id="b11" value="5"> <input type="number" id="b12" value="4">
+                <input type="number" id="b20" value="3"> <input type="number" id="b21" value="2"> <input type="number" id="b22" value="1">
+            </div>
+        </div>
+
+        <div class="operator">=</div>
+
+        <!-- Result Matrix Display -->
+        <div class="matrix-result">
+            <h3>Result</h3>
+            <div class="matrix-grid" id="result-grid">
+                <span id="r00">-</span> <span id="r01">-</span> <span id="r02">-</span>
+                <span id="r10">-</span> <span id="r11">-</span> <span id="r12">-</span>
+                <span id="r20">-</span> <span id="r21">-</span> <span id="r22">-</span>
+            </div>
+            <div id="error-message" class="error"></div>
+        </div>
+
+    </div>
+
+    <div style="text-align: center; margin-top: 20px; width: 100%;">
+         <button id="calculate-button">Calculate Multiplication</button>
+    </div>
+
+
+    <script>
+        const calculateButton = document.getElementById('calculate-button');
+        const errorMessageDiv = document.getElementById('error-message');
+
+        // Helper function to get matrix values from the DOM
+        function getMatrixValues(prefix) {
+            const matrix = [];
+            let hasError = false;
+            for (let i = 0; i < 3; i++) {
+                const row = [];
+                for (let j = 0; j < 3; j++) {
+                    const inputElement = document.getElementById(`${prefix}${i}${j}`);
+                    const value = parseFloat(inputElement.value); // Convert to number
+                    if (isNaN(value)) {
+                        errorMessageDiv.textContent = `Invalid number in ${prefix === 'a' ? 'Matrix A' : 'Matrix B'} at row ${i+1}, col ${j+1}.`;
+                        inputElement.style.borderColor = 'red'; // Highlight error
+                        hasError = true;
+                    } else {
+                        inputElement.style.borderColor = '#ddd'; // Reset border
+                        row.push(value);
+                    }
+                }
+                 if (hasError) return null; // Stop if error found in this row
+                matrix.push(row);
+            }
+            return matrix; // Return the 3x3 list of numbers
+        }
+
+        // Helper function to display the result matrix
+        function displayResult(resultMatrix) {
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    const spanElement = document.getElementById(`r${i}${j}`);
+                    // Format number nicely if needed (e.g., fixed decimal places)
+                    spanElement.textContent = parseFloat(resultMatrix[i][j].toFixed(4)); // Show 4 decimal places
+                }
+            }
+        }
+
+        // Event listener for the button click
+        calculateButton.addEventListener('click', () => {
+            errorMessageDiv.textContent = ''; // Clear previous errors
+            // Reset border colors on all inputs
+            document.querySelectorAll('#matrix-a-grid input, #matrix-b-grid input').forEach(inp => inp.style.borderColor = '#ddd');
+
+            // Get values from input fields
+            const matrixA = getMatrixValues('a');
+            const matrixB = getMatrixValues('b');
+
+            // Only proceed if both matrices were read successfully
+            if (matrixA && matrixB) {
+                // Prepare data payload for the backend
+                const payload = {
+                    matrix_a: matrixA,
+                    matrix_b: matrixB
+                };
+
+                // Send data to the backend API using fetch
+                fetch('/multiply', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload), // Convert JS object to JSON string
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        // If response status is not 2xx, try to parse error from backend
+                        return response.json().then(err => { throw new Error(err.error || `HTTP error! Status: ${response.status}`) });
+                    }
+                    return response.json(); // Parse successful JSON response
+                })
+                .then(data => {
+                    if (data.result) {
+                        displayResult(data.result); // Update the result grid
+                    } else if (data.error) {
+                         // Handle errors returned by the backend logic (e.g., validation)
+                         errorMessageDiv.textContent = `Server Error: ${data.error}`;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error during fetch:', error);
+                    errorMessageDiv.textContent = `Error: ${error.message}`;
+                });
+            }
+        });
+
+    </script>
+
+</body>
+</html>

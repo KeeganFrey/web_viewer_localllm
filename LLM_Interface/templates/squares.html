@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Rectangle Generator</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+            background-color: #f4f4f4;
+        }
+        .controls {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .controls label, .controls input, .controls button {
+            margin: 5px;
+            padding: 8px;
+            font-size: 16px;
+        }
+        .controls input[type="number"] {
+            width: 60px;
+        }
+        .controls button {
+            color: white;
+            background-color: #28a745;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .controls button:hover {
+            background-color: #218838;
+        }
+
+        #rectangleContainer {
+            border: 2px solid #333;
+            display: grid; /* We'll use CSS Grid for easy layout */
+            /* Grid column/row templates will be set by JavaScript */
+            margin-top: 20px;
+            background-color: #e9e9e9; /* Light background for the container */
+        }
+
+        .square-unit {
+            width: 20px;  /* Size of each small square */
+            height: 20px; /* Size of each small square */
+            background-color: #007bff;
+            border: 1px solid #fff; /* Optional: to see individual squares better */
+            box-sizing: border-box; /* Important for consistent sizing with borders */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <h1>Dynamic Rectangle</h1>
+        <label for="rectWidth">Width (units):</label>
+        <input type="number" id="rectWidth" value="5" min="1" max="50">
+
+        <label for="rectHeight">Height (units):</label>
+        <input type="number" id="rectHeight" value="3" min="1" max="50">
+
+        <button id="drawButton">Draw Rectangle</button>
+    </div>
+
+    <div id="rectangleContainer">
+        <!-- Squares will be dynamically added here -->
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const widthInput = document.getElementById('rectWidth');
+            const heightInput = document.getElementById('rectHeight');
+            const drawButton = document.getElementById('drawButton');
+            const rectangleContainer = document.getElementById('rectangleContainer');
+
+            const SQUARE_UNIT_SIZE_PX = 20; // Define the visual size of one "unit" square
+
+            drawButton.addEventListener('click', function() {
+                // 1. Get User Input
+                const widthUnits = parseInt(widthInput.value);
+                const heightUnits = parseInt(heightInput.value);
+
+                // 2. Validate Input
+                if (isNaN(widthUnits) || isNaN(heightUnits) || widthUnits <= 0 || heightUnits <= 0) {
+                    alert('Please enter valid positive numbers for width and height.');
+                    return;
+                }
+                if (widthUnits > 50 || heightUnits > 50) { // Simple limit to prevent browser slowdown
+                    alert('Please keep width and height units at 50 or less for performance.');
+                    return;
+                }
+
+                // 3. Clear Previous Content
+                rectangleContainer.innerHTML = ''; // Easiest way to remove all child elements
+
+                // 4. Prepare the Container (using CSS Grid)
+                // Set up the grid layout dynamically based on the number of units
+                rectangleContainer.style.gridTemplateColumns = `repeat(${widthUnits}, ${SQUARE_UNIT_SIZE_PX}px)`;
+                rectangleContainer.style.gridTemplateRows = `repeat(${heightUnits}, ${SQUARE_UNIT_SIZE_PX}px)`;
+
+                // Adjust container's overall size (optional, but makes border fit nicely)
+                rectangleContainer.style.width = (widthUnits * (SQUARE_UNIT_SIZE_PX)) + 'px';
+                rectangleContainer.style.height = (heightUnits * (SQUARE_UNIT_SIZE_PX)) + 'px';
+
+
+                // 5. Create Elements in a Loop
+                const totalSquares = widthUnits * heightUnits;
+                for (let i = 0; i < totalSquares; i++) {
+                    // Create a new div element for each square
+                    const squareDiv = document.createElement('div');
+
+                    // Add a class for styling (defined in CSS)
+                    squareDiv.classList.add('square-unit');
+
+                    // (Optional) You could add unique IDs or data attributes if needed
+                    // squareDiv.id = `square-${i}`;
+                    // squareDiv.dataset.row = Math.floor(i / widthUnits);
+                    // squareDiv.dataset.col = i % widthUnits;
+
+                    // Append the new square to the container
+                    rectangleContainer.appendChild(squareDiv);
+                }
+            });
+
+            // Optional: Draw an initial rectangle on page load
+            // drawButton.click(); // or call the drawing function directly
+        });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text to Console</title>
+    <!--
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+        }
+    -->
+    <style>
+        .container {
+            background-color: #dddddd;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: top left;
+            width: 350px;
+        }
+        textarea {
+            width: 300px;
+            height: 100px;
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            color: white;
+            background-color: #007bff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        p {
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #555;
+        }
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
+        h1, h2 { color: #333; }
+        .predictions-container {
+            overflow-y: auto;
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .prediction-step {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .prediction-step h3 {
+            margin-top: 0;
+            color: #555;
+            font-size: 1.1em;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        .prediction-step ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .prediction-step li {
+            padding: 8px;
+            border-bottom: 1px dashed #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .prediction-step li:last-child {
+            border-bottom: none;
+        }
+        .token {
+            font-weight: bold;
+            color: #007bff; /* Blue for token */
+            background-color: #e7f3ff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            white-space: pre; /* To show leading/trailing spaces in tokens */
+        }
+        .probability {
+            color: #28a745; /* Green for probability */
+            font-size: 0.9em;
+        }
+        .no-predictions {
+            color: #777;
+            font-style: italic;
+        }
+        .scrollable-div {
+            height: 300px;
+            overflow-y: auto;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>LLM input</h1>
+
+        <label for="textInput">Enter your prompt:</label><br>
+        <textarea id="textInput" placeholder="Prompt"></textarea><br>
+
+        <button id="printButton">Send Prompt</button>
+
+    </div>
+    <div class="container">
+        <div>
+            <label for="max_tokens">Max Tokens to Predict:</label>
+            <input type="number" id="max_tokens" name="max_tokens" value="50" min="1" max="512">
+            <!-- Adjust value, min, max as per your model's capabilities and preference -->
+        </div>
+        <div>
+            <label for="num_top_tokens">Show Top N Next Tokens:</label>
+            <input type="number" id="num_top_tokens" name="num_top_tokens" value="5" min="1" max="20">
+        </div>
+    </div>
+    <div id="next_token_predictions_container">
+        <h4>Top Next Token Predictions:</h4>
+        <ul id="next_token_list">
+            <!-- Predictions will be dynamically added here -->
+        </ul>
+    </div>
+    <h1>LLM Generated Token Predictions</h1>
+    <div class="predictions-container">
+        <div class="scrollable-div">
+            <h2>Step-by-Step Token Choices:</h2>
+            <div id="step_by_step_predictions_display">
+                <!-- Dynamic content will go here -->
+                <p class="no-predictions">No predictions to display yet. Generate some text.</p>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Wait for the DOM to be fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+
+            // Get references to the HTML elements
+            const printButtonElement = document.getElementById('printButton');
+            const textInput = document.getElementById('textInput');
+            const responseArea = document.getElementById('next_token_list');
+
+            function displayStepByStepPredictions(predictionsArray) {
+                const container = document.getElementById('step_by_step_predictions_display');
+                container.innerHTML = ''; // Clear previous content
+
+                if (!predictionsArray || predictionsArray.length === 0) {
+                    container.innerHTML = '<p class="no-predictions">No step-by-step predictions available.</p>';
+                    return;
+                }
+
+                predictionsArray.forEach((stepPredictions, index) => {
+                    // Create a div for each step
+                    const stepDiv = document.createElement('div');
+                    stepDiv.classList.add('prediction-step');
+
+                    // Add a heading for the step
+                    const stepHeading = document.createElement('h3');
+                    stepHeading.textContent = `Predictions for Generated Token ${index + 1}:`;
+                    stepDiv.appendChild(stepHeading);
+
+                    // Create a list for the tokens in this step
+                    const tokenList = document.createElement('ul');
+
+                    if (stepPredictions && stepPredictions.length > 0) {
+                        stepPredictions.forEach(prediction => {
+                            const listItem = document.createElement('li');
+
+                            const tokenSpan = document.createElement('span');
+                            tokenSpan.classList.add('token');
+                            tokenSpan.textContent = `"${prediction.token}"`; // Show quotes to make spaces clear
+
+                            const probSpan = document.createElement('span');
+                            probSpan.classList.add('probability');
+                            probSpan.textContent = `Prob: ${(prediction.probability * 100).toFixed(2)}%`;
+
+                            listItem.appendChild(tokenSpan);
+                            listItem.appendChild(probSpan);
+                            tokenList.appendChild(listItem);
+                        });
+                    } else {
+                        const noTokensItem = document.createElement('li');
+                        noTokensItem.textContent = 'No specific alternatives provided for this step.';
+                        noTokensItem.classList.add('no-predictions');
+                        tokenList.appendChild(noTokensItem);
+                    }
+
+                    stepDiv.appendChild(tokenList);
+                    container.appendChild(stepDiv);
+                });
+            }
+
+            async function sendTextData() {
+                const textToSend = textInput.value;
+
+                if (!textToSend.trim()) {
+                    responseArea.textContent = 'Please enter some text.';
+                    responseArea.style.color = 'red';
+                    return;
+                }
+
+                responseArea.textContent = 'Sending...';
+                responseArea.style.color = 'blue';
+
+                try {
+                    // The URL of your Flask endpoint
+                    const url = '/predict_s'; // This matches the @app.route in Flask
+
+                    const maxTokens = document.getElementById('max_tokens').value;
+                    const numPredictions = document.getElementById('num_top_tokens').value;
+                    responseArea.innerHTML = ''; // Clear previous predictions
+                    
+                    // Then, when you make the API call to your backend:
+                    const requestData = {
+                        prompt: textToSend,
+                        max_new_tokens: parseInt(maxTokens, 10), // Ensure it's an integer
+                        num_predictions: parseInt(numPredictions, 10)
+                    };
+
+                    const response = await fetch(url, {
+                        method: 'POST', // Specify the method
+                        headers: {
+                            'Content-Type': 'application/json' // Tell the server we're sending JSON
+                        },
+                        body: JSON.stringify(requestData) // Convert the JavaScript object to a JSON string
+                    });
+
+                    if (!response.ok) {
+                        // If the server response is not 2xx, throw an error
+                        const errorData = await response.json(); // Try to get error details from server
+                        throw new Error(`Server error: ${response.status} - ${errorData.error || 'Unknown error'}`);
+                    }
+
+                    const result = await response.json(); // Parse the JSON response from the server
+
+                    // Display success message from the backend
+                    responseArea.textContent = `Backend says: ${result.message} (The model predicts: "${result.predicted_text}")`;
+                    responseArea.style.color = 'green';
+                    textInput.value = ''; // Clear the textarea after successful submission
+
+                    displayStepByStepPredictions(result.list_of_predictions);
+                } catch (error) {
+                    console.error('Error sending data:', error);
+                    responseArea.textContent = `Error: ${error.message}`;
+                    responseArea.style.color = 'red';
+                }
+            }
+
+            // Add an event listener to the button
+            printButtonElement.addEventListener('click', function() {
+                // Get the current value from the textarea
+                const textToPrint = textInput.value;
+
+                // Print the text to the console
+                console.log("User input:", textToPrint);
+
+                sendTextData();
+                // Optional: You can clear the textarea after printing
+                // textInputElement.value = '';
+            });
+    });
+    </script>
+
+</body>
+</html>
