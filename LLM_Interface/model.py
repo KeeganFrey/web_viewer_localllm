@@ -70,7 +70,7 @@ class LocalLLM:
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
         with torch.no_grad():
-            outputs = self.model(**inputs)
+            outputs = self.model(**inputs, output_attentions=True)
             all_logits = outputs.logits
             next_token_logits = all_logits[:, -1, :]
             next_token_probabilities = torch.softmax(next_token_logits, dim=-1)
@@ -94,7 +94,8 @@ class LocalLLM:
             "input_text": text,
             "predicted_next_token": predicted_next_token_str,
             "predicted_next_token_probability": predicted_next_token_prob,
-            "top_k_predictions": top_k_results
+            "top_k_predictions": top_k_results,
+            "attentions": [att.cpu() for att in outputs.attentions] if outputs.attentions is not None else None
         }
 
     def generate_text(self, prompt_text: str, max_new_tokens: int = 50, do_sample: bool = True, temperature: float = 1.0, top_k: int = 5, top_p: float = 0.95, num_beams: int = 1, repetition_penalty: float = 1.0, **kwargs) -> str:

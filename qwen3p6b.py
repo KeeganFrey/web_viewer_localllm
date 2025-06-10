@@ -1,111 +1,45 @@
 # Load model directly
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
+from LLM_Interface.model import LocalLLM # Import LocalLLM
 
-class LocalLLM:
-    def __init__(self, model_name_or_path: str, device: str = None):
-        self.model_name_or_path = model_name_or_path
-        self.tokenizer = None
-        self.model = None
-        self.is_loaded = False
+def test_predict_next_token_with_attentions():
+    """Tests the predict_next_token method of LocalLLM for attention output."""
+    print("Running test_predict_next_token_with_attentions...")
+    # Instantiate LocalLLM with a valid model name
+    # Ensure the model name is one that supports attention output if specific
+    # For example, "Qwen/Qwen3-0.6B" or another similar model.
+    llm_instance = LocalLLM(model_name_or_path="Qwen/Qwen3-0.6B")
 
-        if device:
-            self.device = torch.device(device)
-        else:
-            if torch.cuda.is_available():
-                self.device = torch.device("cuda")
-            elif torch.backends.mps.is_available(): # For Apple Silicon
-                self.device = torch.device("mps")
-            else:
-                self.device = torch.device("cpu")
-        print(f"Using device: {self.device}")
+    # Load the model
+    llm_instance.load()
 
-    def _load_model(self):
-        if not self.is_loaded:
-            print(f"Loading model and tokenizer for '{self.model_name_or_path}'...")
-            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path)
-            self.model = AutoModelForCausalLM.from_pretrained(self.model_name_or_path)
-            self.model.to(self.device)
-            self.model.eval() # Set to evaluation mode
-            self.is_loaded = True
-            print("Model and tokenizer loaded.")
-        # else:
-            # print("Model already loaded.")
+    # Call predict_next_token with a sample input string
+    sample_text = "Hello world"
+    predictions = llm_instance.predict_next_token(text=sample_text)
 
-    def _unload_model(self):
-        if self.is_loaded:
-            print(f"Unloading model and tokenizer for '{self.model_name_or_path}'...")
-            del self.model
-            del self.tokenizer
-            self.model = None
-            self.tokenizer = None
-            self.is_loaded = False
-            if self.device.type == 'cuda':
-                torch.cuda.empty_cache()
-            print("Model and tokenizer unloaded.")
-        # else:
-            # print("Model not loaded, nothing to unload.")
+    # Assert that the key "attentions" exists in the returned dictionary
+    assert "attentions" in predictions, "Key 'attentions' not found in predictions dictionary."
 
-    def load(self):
-        """Explicitly loads the model."""
-        self._load_model()
+    # Assert that the value of "attentions" is a list (or None if model doesn't output attentions)
+    if predictions["attentions"] is not None: # Models might not always return attentions
+        assert isinstance(predictions["attentions"], list), \
+            f"Value of 'attentions' is not a list, got {type(predictions['attentions'])}."
 
-    def unload(self):
-        """Explicitly unloads the model."""
-        self._unload_model()
+        # Assert that each element in the "attentions" list is a torch.Tensor
+        if predictions["attentions"]: # If the list is not empty
+            for i, attention_layer in enumerate(predictions["attentions"]):
+                assert isinstance(attention_layer, torch.Tensor), \
+                    f"Element {i} in 'attentions' list is not a torch.Tensor. Got {type(attention_layer)}."
+                print(f"Attention layer {i} tensor device: {attention_layer.device}")
+    else:
+        print("No attentions returned by the model, which might be expected for some configurations/models.")
 
-    def predict_next_token(self, text: str, top_k: int = 5) -> dict:
-        if not self.is_loaded:
-            print("Model not loaded. Loading now for this prediction...")
-            self._load_model()
-            # Decide if you want to unload immediately after if not managed by `with`
-            # For now, let's assume if predict is called directly, it stays loaded
-            # until an explicit `unload()` or program exit.
-            # If this method is called inside a `with` block, `__exit__` will handle unloading.
 
-        if not self.tokenizer or not self.model:
-            raise RuntimeError("Model or tokenizer not available. Call load() or use a 'with' statement.")
+    print("test_predict_next_token_with_attentions assertions passed (or attentions were None as expected).")
 
-        inputs = self.tokenizer(text, return_tensors="pt", padding=True, truncation=True)
-        # Move inputs to the same device as the model
-        inputs = {k: v.to(self.device) for k, v in inputs.items()}
-
-        with torch.no_grad():
-            outputs = self.model(**inputs)
-            all_logits = outputs.logits
-            next_token_logits = all_logits[:, -1, :]
-            next_token_probabilities = torch.softmax(next_token_logits, dim=-1)
-
-            # Top choice
-            predicted_next_token_id = torch.argmax(next_token_probabilities, dim=-1)
-            predicted_next_token_str = self.tokenizer.decode(predicted_next_token_id[0].item())
-            predicted_next_token_prob = next_token_probabilities[0, predicted_next_token_id[0]].item()
-
-            # Top K
-            top_k_probs, top_k_indices = torch.topk(next_token_probabilities, top_k, dim=-1)
-
-            top_k_results = []
-            for i in range(top_k):
-                token_id = top_k_indices[0, i].item()
-                prob = top_k_probs[0, i].item()
-                token_str = self.tokenizer.decode(token_id)
-                top_k_results.append({"token_id": token_id, "token": token_str, "probability": prob})
-
-        return {
-            "input_text": text,
-            "predicted_next_token": predicted_next_token_str,
-            "predicted_next_token_probability": predicted_next_token_prob,
-            "top_k_predictions": top_k_results
-        }
-
-    def __enter__(self):
-        """Context manager entry: loads the model."""
-        self._load_model()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit: unloads the model."""
-        self._unload_model()
+    # Unload the model
+    llm_instance.unload()
 
 
 def single_prediction():
@@ -156,8 +90,11 @@ def single_prediction():
             token_str = tokenizer.decode(token_id)
             print(f"- '{token_str}' (ID: {token_id}): {prob:.4f}")
 
-interface = LocalLLM("Qwen/Qwen3-0.6B")
-interface.load()
-l = interface.predict_next_token("2 + 2 is ",5)
-print(l)
-interface.unload()
+interface_instance = LocalLLM("Qwen/Qwen3-0.6B") # Changed variable name
+interface_instance.load() # Changed variable name
+predictions_output = interface_instance.predict_next_token("2 + 2 is ", 5) # Changed variable name
+print(predictions_output) # Changed variable name
+interface_instance.unload() # Changed variable name
+
+# Call the new test function
+test_predict_next_token_with_attentions()
