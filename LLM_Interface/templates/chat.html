@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Interface</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f8;
+        }
+
+        .chat-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .conversation-area {
+            flex-grow: 1;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            padding: 15px;
+            margin-bottom: 15px;
+            overflow-y: auto;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .input-area {
+            display: flex;
+        }
+
+        .input-area textarea {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-right: 10px;
+            resize: none; /* Prevent manual resize, rely on flexbox */
+        }
+
+        .input-area button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .input-area button:hover {
+            background-color: #0056b3;
+        }
+
+        .settings-sidebar {
+            width: 250px; /* Adjust width as needed */
+            padding: 20px;
+            background-color: #e9ecef;
+            border-left: 1px solid #ccc;
+            box-shadow: -2px 0 4px rgba(0,0,0,0.1);
+        }
+
+        .settings-sidebar h3 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 1px solid #bbb;
+            padding-bottom: 10px;
+        }
+
+        .setting {
+            margin-bottom: 15px;
+        }
+
+        .setting label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        .setting input[type="range"] {
+            width: 100%;
+        }
+
+        .setting input[type="number"] {
+            width: 60px; /* Smaller width for number display */
+            margin-left: 5px;
+        }
+
+        .user-message {
+            text-align: right;
+            margin-bottom: 10px;
+        }
+        .user-message p {
+            background-color: #007bff;
+            color: white;
+            padding: 10px;
+            border-radius: 10px 10px 0 10px;
+            display: inline-block;
+            max-width: 70%;
+        }
+        .model-message {
+            text-align: left;
+            margin-bottom: 10px;
+        }
+        .model-message p {
+            background-color: #e9ecef;
+            color: #333;
+            padding: 10px;
+            border-radius: 10px 10px 10px 0;
+            display: inline-block;
+            max-width: 70%;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="conversation-area" id="conversationArea">
+            <!-- Chat messages will appear here -->
+            <div class="model-message"><p>Hello! How can I help you today?</p></div>
+        </div>
+        <div class="input-area">
+            <textarea id="chatInput" placeholder="Type your message..." rows="3"></textarea>
+            <button id="sendButton">Send</button>
+        </div>
+    </div>
+
+    <div class="settings-sidebar">
+        <h3>Model Settings</h3>
+
+        <div class="setting">
+            <label for="temperature">Temperature: <span id="temperatureValue">1.0</span></label>
+            <input type="range" id="temperature" min="0.1" max="2.0" step="0.1" value="1.0">
+        </div>
+
+        <div class="setting">
+            <label for="maxNewTokens">Max New Tokens: <span id="maxNewTokensValue">50</span></label>
+            <input type="range" id="maxNewTokens" min="10" max="512" step="1" value="50">
+        </div>
+
+        <div class="setting">
+            <label for="topK">Top-K: <span id="topKValue">5</span></label>
+            <input type="range" id="topK" min="1" max="50" step="1" value="5">
+        </div>
+
+        <div class="setting">
+            <label for="topP">Top-P: <span id="topPValue">0.95</span></label>
+            <input type="range" id="topP" min="0.05" max="1.0" step="0.05" value="0.95">
+        </div>
+
+        <!-- Add more settings as needed -->
+         <div class="setting">
+            <button id="clearChatButton">Clear Chat</button>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Existing slider value display logic
+        const sliders = [
+            {input: 'temperature', valueDisplay: 'temperatureValue'},
+            {input: 'maxNewTokens', valueDisplay: 'maxNewTokensValue'},
+            {input: 'topK', valueDisplay: 'topKValue'},
+            {input: 'topP', valueDisplay: 'topPValue'}
+        ];
+
+        sliders.forEach(sliderConfig => {
+            const sliderElement = document.getElementById(sliderConfig.input);
+            const valueDisplayElement = document.getElementById(sliderConfig.valueDisplay);
+            sliderElement.addEventListener('input', () => {
+                valueDisplayElement.textContent = sliderElement.value;
+            });
+        });
+
+        // New chat logic
+        const conversationArea = document.getElementById('conversationArea');
+        const chatInput = document.getElementById('chatInput');
+        const sendButton = document.getElementById('sendButton');
+        const clearChatButton = document.getElementById('clearChatButton');
+
+        const temperatureSlider = document.getElementById('temperature');
+        const maxNewTokensSlider = document.getElementById('maxNewTokens');
+        const topKSlider = document.getElementById('topK');
+        const topPSlider = document.getElementById('topP');
+
+        function addMessageToConversation(message, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add(sender === 'user' ? 'user-message' : 'model-message');
+
+            const messageParagraph = document.createElement('p');
+            messageParagraph.textContent = message;
+
+            messageDiv.appendChild(messageParagraph);
+            conversationArea.appendChild(messageDiv);
+            conversationArea.scrollTop = conversationArea.scrollHeight; // Scroll to bottom
+        }
+
+        async function sendMessage() {
+            const promptText = chatInput.value.trim();
+            if (!promptText) return;
+
+            addMessageToConversation(promptText, 'user');
+            chatInput.value = ''; // Clear input after sending
+
+            const settings = {
+                temperature: parseFloat(temperatureSlider.value),
+                max_new_tokens: parseInt(maxNewTokensSlider.value, 10),
+                top_k: parseInt(topKSlider.value, 10),
+                top_p: parseFloat(topPSlider.value)
+            };
+
+            // Add a temporary "thinking..." message for the model
+            const thinkingDiv = document.createElement('div');
+            thinkingDiv.classList.add('model-message');
+            const thinkingParagraph = document.createElement('p');
+            thinkingParagraph.textContent = 'Thinking...';
+            thinkingDiv.appendChild(thinkingParagraph);
+            conversationArea.appendChild(thinkingDiv);
+            conversationArea.scrollTop = conversationArea.scrollHeight;
+
+            try {
+                const response = await fetch('/chat_predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        prompt: promptText,
+                        ...settings // Spread the settings object
+                    }),
+                });
+
+                conversationArea.removeChild(thinkingDiv); // Remove "thinking..." message
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ detail: 'Unknown error structure' }));
+                    console.error('Server error:', response.status, errorData);
+                    addMessageToConversation(`Error: ${errorData.detail || response.statusText}`, 'model');
+                    return;
+                }
+
+                const data = await response.json();
+                if (data.generated_text) {
+                    addMessageToConversation(data.generated_text, 'model');
+                } else if (data.error) {
+                    addMessageToConversation(`Error from model: ${data.error}`, 'model');
+                } else {
+                    addMessageToConversation('Received an unexpected response from the model.', 'model');
+                }
+
+            } catch (error) {
+                conversationArea.removeChild(thinkingDiv); // Ensure "thinking..." is removed on network error too
+                console.error('Error sending message:', error);
+                addMessageToConversation(`Network or client-side error: ${error.message}`, 'model');
+            }
+        }
+
+        function clearChat() {
+            // Remove all children except the first one (initial greeting)
+            while (conversationArea.children.length > 1) {
+                conversationArea.removeChild(conversationArea.lastChild);
+            }
+            // Or, if you want to clear everything including the greeting and add a new one:
+            // conversationArea.innerHTML = '<div class="model-message"><p>Hello! How can I help you today?</p></div>';
+        }
+
+        sendButton.addEventListener('click', sendMessage);
+        clearChatButton.addEventListener('click', clearChat);
+
+        chatInput.addEventListener('keypress', function(event) {
+            // Check if Enter key is pressed (and not Shift + Enter for newline)
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault(); // Prevent default action (newline in textarea)
+                sendMessage();
+            }
+        });
+    });
+</script>
+</body>
+</html>

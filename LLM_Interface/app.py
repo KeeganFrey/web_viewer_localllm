@@ -148,6 +148,55 @@ def predict_s():
         # Method Not Allowed
         return jsonify({"error": "Method not allowed. Use POST."}), 405
 
+@app.route('/chat')
+def chat_page():
+    return render_template('chat.html')
+
+@app.route('/chat_predict', methods=['POST'])
+def chat_predict():
+    if request.method == 'POST':
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({"error": "No JSON data received"}), 400
+
+            prompt = data.get('prompt')
+            if not prompt:
+                return jsonify({"error": "Missing 'prompt' in JSON payload"}), 400
+
+            # Extract generation parameters with defaults if not provided
+            temperature = data.get('temperature', 1.0)
+            max_new_tokens = data.get('max_new_tokens', 50)
+            top_k = data.get('top_k', 5)
+            top_p = data.get('top_p', 0.95)
+            # Add other parameters as needed, e.g., do_sample, num_beams, etc.
+            # For now, we'll assume do_sample=True for conversational use
+
+            # Log received data for debugging
+            print(f"Received for /chat_predict: prompt='{prompt}', temp={temperature}, max_tokens={max_new_tokens}, top_k={top_k}, top_p={top_p}")
+
+            # Use the global 'interface' to generate text
+            # The generate_text method in LocalLLM handles model loading/unloading
+            generated_text = interface.generate_text(
+                prompt_text=prompt,
+                temperature=float(temperature),
+                max_new_tokens=int(max_new_tokens),
+                top_k=int(top_k),
+                top_p=float(top_p),
+                do_sample=True # Important for more natural conversation
+            )
+
+            return jsonify({"generated_text": generated_text}), 200
+
+        except Exception as e:
+            print(f"Error processing /chat_predict request: {e}")
+            # Consider logging the stack trace for more detailed debugging
+            import traceback
+            traceback.print_exc()
+            return jsonify({"error": str(e)}), 500
+    else:
+        return jsonify({"error": "Method not allowed. Use POST."}), 405
+
 # 5. Run the development server (if this script is executed directly)
 if __name__ == '__main__':
     # debug=True enables auto-reloading and an interactive debugger in the browser
