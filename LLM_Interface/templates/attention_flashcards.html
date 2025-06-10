@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attention Flashcards</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+
+        #flashcard-container {
+            position: relative; /* For absolute positioning of cards if needed later */
+            width: 500px;
+            height: 300px;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex; /* To help center the card content */
+            justify-content: center;
+            align-items: center;
+            overflow: hidden; /* Hide cards that are not active */
+        }
+
+        .flashcard {
+            width: 90%; /* Make card take most of the container width */
+            height: 90%; /* Make card take most of the container height */
+            padding: 20px;
+            text-align: center;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            background-color: #fff; /* Card background */
+            display: none; /* Initially hide all cards */
+        }
+
+        .flashcard.active {
+            display: block; /* Show only the active card */
+        }
+
+        .layer-name {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .attention-data {
+            font-size: 0.9em;
+            color: #555;
+            white-space: pre-wrap; /* To respect formatting in attention data */
+            max-height: 180px; /* Limit height and allow scrolling if needed */
+            overflow-y: auto; /* Add scroll for overflow */
+        }
+
+        #navigation-controls button {
+            padding: 10px 15px;
+            margin: 0 10px;
+            font-size: 1em;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+        }
+
+        #navigation-controls button:hover {
+            background-color: #0056b3;
+        }
+
+        #navigation-controls button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div id="flashcard-container">
+        <!-- Flashcards will be dynamically inserted here -->
+    </div>
+
+    <div id="navigation-controls">
+        <button id="prev-button">Previous</button>
+        <button id="next-button">Next</button>
+    </div>
+
+    <template id="flashcard-template">
+        <div class="flashcard">
+            <h2 class="layer-name">Layer X</h2>
+            <div class="attention-data">
+                <!-- Attention data will be displayed here -->
+            </div>
+        </div>
+    </template>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Placeholder data (will be replaced by actual data later)
+            const attentionLayersData = [
+                {
+                    layerName: "Layer 1: Self-Attention",
+                    attention: "Attention weights for Layer 1: \nToken A -> Token B: 0.8\nToken A -> Token C: 0.2"
+                },
+                {
+                    layerName: "Layer 2: Encoder-Decoder Attention",
+                    attention: "Attention weights for Layer 2: \nSource X -> Target Y: 0.7\nSource X -> Target Z: 0.3"
+                },
+                {
+                    layerName: "Layer 3: Self-Attention (Decoder)",
+                    attention: "Attention weights for Layer 3: \nToken D -> Token E: 0.5\nToken D -> Token F: 0.5"
+                },
+                {
+                    layerName: "Layer 4: Another Layer",
+                    attention: "Some other attention data here.\n - Item 1\n - Item 2"
+                }
+            ];
+
+            const flashcardContainer = document.getElementById('flashcard-container');
+            const flashcardTemplate = document.getElementById('flashcard-template');
+            const prevButton = document.getElementById('prev-button');
+            const nextButton = document.getElementById('next-button');
+
+            let currentCardIndex = 0;
+            let flashcards = [];
+
+            function renderFlashcards() {
+                flashcardContainer.innerHTML = ''; // Clear existing cards
+                flashcards = []; // Reset the flashcards array
+
+                attentionLayersData.forEach((layerData, index) => {
+                    const cardClone = flashcardTemplate.content.cloneNode(true);
+                    cardClone.querySelector('.layer-name').textContent = layerData.layerName;
+                    cardClone.querySelector('.attention-data').textContent = layerData.attention;
+
+                    const flashcardElement = cardClone.querySelector('.flashcard');
+                    flashcardContainer.appendChild(flashcardElement);
+                    flashcards.push(flashcardElement); // Store reference to the card element
+                });
+
+                showCard(currentCardIndex);
+            }
+
+            function showCard(index) {
+                flashcards.forEach((card, i) => {
+                    card.classList.toggle('active', i === index);
+                });
+                updateNavigationButtons();
+            }
+
+            function updateNavigationButtons() {
+                prevButton.disabled = currentCardIndex === 0;
+                nextButton.disabled = currentCardIndex === flashcards.length - 1;
+            }
+
+            prevButton.addEventListener('click', () => {
+                if (currentCardIndex > 0) {
+                    currentCardIndex--;
+                    showCard(currentCardIndex);
+                }
+            });
+
+            nextButton.addEventListener('click', () => {
+                if (currentCardIndex < flashcards.length - 1) {
+                    currentCardIndex++;
+                    showCard(currentCardIndex);
+                }
+            });
+
+            // Initial render
+            if (attentionLayersData.length > 0) {
+                renderFlashcards();
+            } else {
+                flashcardContainer.innerHTML = '<p>No attention data available.</p>';
+                prevButton.disabled = true;
+                nextButton.disabled = true;
+            }
+        });
+    </script>
+</body>
+</html>
